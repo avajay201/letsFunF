@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "749481877329",
+    "project_id": "metrichat-adb11",
+    "storage_bucket": "metrichat-adb11.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:749481877329:android:e05be9a87738963127bd70",
+        "android_client_info": {
+          "package_name": "com.fun.letsfun"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDL06y0oU0yR0XJtAFKtbPqNwRJAoWmTQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

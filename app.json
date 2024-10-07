@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "LetsFun",
+    "slug": "letsfun",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.fun.letsfun",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "googleServicesFile": "./google-services.json"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "myapp",
+    "extra": {
+      "eas": {
+        "projectId": "fd7fe8e5-7aa9-4978-99f7-960d376cbafe"
+      }
+    },
+    "owner": "avajay2061",
+    "notification": {
+      "icon": "./assets/icon.png",
+      "color": "#000000"
+    }
+  }
+}
