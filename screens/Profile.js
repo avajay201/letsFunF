@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import MyLayout from "./MyLayout";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { UserProfile, updateUserProfile } from "../actions/APIActions";
+import { userProfile, updateUserProfile } from "../actions/APIActions";
 import { BASE_URL } from "../actions/API";
 import { MainContext } from "../others/MyContext";
 
@@ -33,7 +33,7 @@ export default function Profile({ navigation }) {
   // Get profile start
   useEffect(()=>{
     const fetchProfile = async()=>{
-      const response = await UserProfile();
+      const response = await userProfile();
       if (response[0] === 200){
         setProfileData(response[1]);
         setProfileEditData(response[1]);

@@ -5,7 +5,7 @@ import * as Animatable from 'react-native-animatable';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from './comps/chats/Avatar';
-import { UserChats } from '../actions/APIActions';
+import { userChats } from '../actions/APIActions';
 import { BASE_URL } from '../actions/API';
 import { MainContext } from '../others/MyContext';
 
@@ -21,7 +21,7 @@ export default function Home({ navigation }) {
   // Get chats start
   const fetchChats = async () => {
     setIsLoading(true);
-    const response = await UserChats();
+    const response = await userChats();
     if (response[0] === 200) {
       setChats(response[1]);
     } else if (response[0] === 401) {
@@ -64,7 +64,6 @@ export default function Home({ navigation }) {
     if (!wsData){
       return;
     }
-    console.log('Message****************>>>', wsData);
     const status = wsData['status'];
     if (status === 'msg') {
       setChats(wsData['chats']);
@@ -91,7 +90,6 @@ export default function Home({ navigation }) {
           return chat;
         });
       }
-      console.log('updatedChats>>>', updatedChats);
       if (updatedChats){
         setChats(updatedChats);
       }
@@ -116,7 +114,7 @@ export default function Home({ navigation }) {
           <Text style={[
             styles.chatMessage, 
             { color: item.unseen_msgs > 0 || item.is_typing ? 'green' : '#999', fontWeight: item.unseen_msgs > 0 ? 'bold' : 'normal' }
-          ]}>{item.is_typing ? 'typing...' : (item.msg_type === 'Text' ? (item?.last_message?.length > 30 ? item?.last_message.slice(0, 30) + '...' : item.last_message) : (item.msg_type === 'Image' ? 'Image' : null))}</Text>
+          ]}>{item.is_typing ? 'typing...' : (item.msg_type === 'Text' ? (item?.last_message?.length > 30 ? item?.last_message.slice(0, 30) + '...' : item.last_message) : item.msg_type)}</Text>
         </View>
         {item.unseen_msgs > 0 && <Text style={styles.unseenMsgs}>{item.unseen_msgs}</Text>}
         <Text style={styles.chatTime}>{item.last_message_time}</Text>

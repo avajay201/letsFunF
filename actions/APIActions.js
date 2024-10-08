@@ -32,7 +32,7 @@ export const userLogin = async(data)=>{
     }
 };
 
-export const UserProfile = async()=>{
+export const userProfile = async()=>{
     try{
         const authToken = await getToken();
         const response = await axios.get(ENDPOINTS.profile, {
@@ -67,7 +67,7 @@ export const updateUserProfile = async(data)=>{
     }
 };
 
-export const UserChats = async()=>{
+export const userChats = async()=>{
     try{
         const authToken = await getToken();
         const response = await axios.get(ENDPOINTS.chats, {
@@ -84,7 +84,7 @@ export const UserChats = async()=>{
     }
 };
 
-export const UserMessages = async(data)=>{
+export const userMessages = async(data)=>{
     try{
         const authToken = await getToken();
         const response = await axios.post(ENDPOINTS.messages, data, {
@@ -95,7 +95,25 @@ export const UserMessages = async(data)=>{
         return [200, response.data];
     }
     catch(error){
-        console.log('error.response>>>', error.response);
+        if (error.response?.data){
+            return [error.response?.status, error.response?.data?.detail];
+        };
+    }
+};
+
+export const sendMediaMessage = async(data)=>{
+    try{
+        const authToken = await getToken();
+        const response = await axios.post(ENDPOINTS.sendMessage, data, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return [201, response.data];
+    }
+    catch(error){
+        console.log('error.response>>>>', error.response);
         if (error.response?.data){
             return [error.response?.status, error.response?.data?.detail];
         };
@@ -113,7 +131,6 @@ export const messageDelete = async(data)=>{
         return [200, response.data];
     }
     catch(error){
-        console.log('error.response>>>', error.response);
         if (error.response?.data){
             return [error.response?.status, error.response?.data?.detail];
         };
@@ -131,7 +148,6 @@ export const clearChat = async(data)=>{
         return [200, []];
     }
     catch(error){
-        console.log('error.response>>>', error.response);
         if (error.response?.data){
             return [error.response?.status, error.response?.data?.detail];
         };
@@ -149,7 +165,6 @@ export const blockUser = async(data)=>{
         return [200, []];
     }
     catch(error){
-        console.log('error.response>>>', error.response);
         if (error.response?.data){
             return [error.response?.status, error.response?.data?.detail];
         };
