@@ -28,10 +28,10 @@
     "scheme": "myapp",
     "extra": {
       "eas": {
-        "projectId": "fd7fe8e5-7aa9-4978-99f7-960d376cbafe"
+        "projectId": "5f26a376-ed38-4b28-988e-2fad5805ad3e"
       }
     },
-    "owner": "avajay2061",
+    "owner": "avajay928",
     "notification": {
       "icon": "./assets/icon.png",
       "color": "#000000"

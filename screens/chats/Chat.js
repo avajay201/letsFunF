@@ -24,6 +24,7 @@ import {
   clearChat,
   blockUser,
   sendMediaMessage,
+  reportUser,
 } from "../../actions/APIActions";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SOCKET_URL } from "../../actions/API";
@@ -31,8 +32,8 @@ import { MessageDeleteModal } from "../comps/chats/MessageDeleteModal";
 import { BASE_URL } from "../../actions/API";
 import { Avatar } from "../comps/chats/Avatar";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
 import { Video } from "expo-av";
+import { Picker } from '@react-native-picker/picker';
 
 const MESSAGE_HEIGHT = 100; // message height
 const Chat = ({ navigation }) => {
@@ -60,6 +61,8 @@ const Chat = ({ navigation }) => {
   const [messageImagePreview, setMessageImagePreview] = useState(null);
   const [messageSendingLoader, setMessageSendingLoader] = useState(false);
   const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB in bytes
+  const [reportReason, setReportReason] = useState('');
+  const [reportMessage, setReportMessage] = useState('');
   let chatName;
 
   // scroll messages start
@@ -626,7 +629,7 @@ const Chat = ({ navigation }) => {
           other_blocked: !userProfile.other_blocked,
         }));
         ToastAndroid.show(
-          `User ${userProfile.other_blocked ? "unblocked" : "blocked"}!`,
+          `${userName} ${userProfile.other_blocked ? "unblocked" : "blocked"}!`,
           ToastAndroid.SHORT
         );
         setIsLoading(false);
@@ -647,9 +650,29 @@ const Chat = ({ navigation }) => {
   // Block user end
 
   // Report user start
-  const reportUser = () => {
+  const reportsUser = async() => {
+    if (!reportReason){
+      ToastAndroid.show("Please select a reason for the report.", ToastAndroid.SHORT);
+      return;
+    }
+    const response = await reportUser({user: userName, message: reportMessage, reason: reportReason});
+    if (response[0] === 201){
+      ToastAndroid.show(`${userName} has been reported! We will review the report within 24 hours.`, ToastAndroid.SHORT);
+    }
+    else if (response[0] === 401) {
+      ToastAndroid.show("Session expired, please login.", ToastAndroid.SHORT);
+      await AsyncStorage.removeItem("auth_token");
+      await AsyncStorage.removeItem("auth_user");
+      navigation.navigate("Login");
+    } else {
+      ToastAndroid.show(
+        'Failed to report the user. Please try again later.',
+        ToastAndroid.SHORT
+      );
+    }
+    setReportMessage('');
+    setReportReason('');
     setReportModalVisible(false);
-    ToastAndroid.show(`${userName} has been reported!`, ToastAndroid.SHORT);
   };
   // Report user end
 
@@ -901,13 +924,16 @@ const Chat = ({ navigation }) => {
             </TouchableOpacity>
 
             <Image
-              source={require("../../assets/profile.png")}
+              source={ userProfile.blocked ? require("../../assets/profile.png") : (userProfile.profile_picture ? {uri : BASE_URL + userProfile.profile_picture} : null) }
               style={styles.profileImageLarge}
             />
+            {/* userProfile.blocked
+                ? require("../../assets/profile.png")
+                : userProfile.profile_picture
+                ? BASE_URL + userProfile.profile_picture
+                : null */}
+            {/* <Image source={is_url ? { uri: src } : src} style={{ height: '100%', width: '100%' }} /> */}
             <Text style={styles.profileUsername}>{userName}</Text>
-            <Text style={styles.profileDetail}>
-              More details about the user...
-            </Text>
           </View>
         </View>
       </Modal>
@@ -959,42 +985,56 @@ const Chat = ({ navigation }) => {
       </Modal>
 
       {/* Report modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={reportModalVisible}
-        onRequestClose={() => setReportModalVisible(false)}
+<Modal
+  animationType="fade"
+  transparent={true}
+  visible={reportModalVisible}
+  onRequestClose={() => setReportModalVisible(false)}
+>
+  <View style={styles.reportModalBackground}>
+    <View style={styles.reportModalContainer}>
+      <Text style={styles.reportModalHeading}>Report User</Text>
+
+      <Picker
+        selectedValue={reportReason}
+        onValueChange={(itemValue) => setReportReason(itemValue)}
+        style={styles.reportPicker}
       >
-        <View style={styles.reportModalBackground}>
-          <View style={styles.reportModalContainer}>
-            <Text style={styles.reportModalHeading}>Report User</Text>
+        <Picker.Item label="Select a reason..." value="" />
+        <Picker.Item label="Spam" value="spam" />
+        <Picker.Item label="Harassment" value="harassment" />
+        <Picker.Item label="Offensive Content" value="offensive" />
+      </Picker>
 
-            <TextInput
-              style={styles.reportInput}
-              placeholder="Describe the issue..."
-              placeholderTextColor="#999"
-              multiline
-              numberOfLines={4}
-            />
+      <TextInput
+        style={styles.reportInput}
+        placeholder="Describe the issue(optional)..."
+        placeholderTextColor="#999"
+        multiline
+        numberOfLines={4}
+        value={reportMessage}
+        onChangeText={setReportMessage}
+      />
 
-            <View style={styles.reportButtonContainer}>
-              <TouchableOpacity
-                style={styles.reportCancelButton}
-                onPress={() => setReportModalVisible(false)}
-              >
-                <Text style={styles.reportCancelText}>Cancel</Text>
-              </TouchableOpacity>
+      <View style={styles.reportButtonContainer}>
+        <TouchableOpacity
+          style={styles.reportCancelButton}
+          onPress={() => setReportModalVisible(false)}
+        >
+          <Text style={styles.reportCancelText}>Cancel</Text>
+        </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.reportSubmitButton}
-                onPress={() => reportUser()}
-              >
-                <Text style={styles.reportSubmitText}>Submit Report</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        <TouchableOpacity
+          style={styles.reportSubmitButton}
+          onPress={reportsUser}
+        >
+          <Text style={styles.reportSubmitText}>Submit Report</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+</Modal>
+
 
       {/* Message image preview Modal */}
       <Modal
@@ -1506,6 +1546,16 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 20,
     textAlign: "center",
+  },
+  reportPicker: {
+    height: 50,
+    width: '100%',
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 20,
+    paddingHorizontal: 10,
+    color: '#333',
   },
   reportInput: {
     width: "100%",

@@ -99,8 +99,9 @@ export default function Home({ navigation }) {
   useEffect(()=>{
     console.log('chats>>>', chats);
     const membersData = chats.filter(chat => activeUsers.includes(chat.username) && !chat.is_blocked);
+    console.log('membersData>>>', membersData);
     setActiveMembers(membersData);
-  }, [activeUsers]);
+  }, [activeUsers, chats]);
 
   // Render chats start
   const renderItem = ({ item, index }) => (
@@ -109,7 +110,7 @@ export default function Home({ navigation }) {
         style={styles.chatItem}
         onPress={() => navigation.navigate('Chat', { userName: item.username })}
       >
-        <Avatar src={item.is_blocked ? require('../assets/profile.png') : (item.profile_picture ? BASE_URL + item.profile_picture : null)} name={item.username} is_url={item.is_blocked ? false : true} />
+        <Avatar src={item.blocked ? require('../assets/profile.png') : (item.profile_picture ? BASE_URL + item.profile_picture : null)} name={item.username} is_url={item.blocked ? false : true} />
         <View style={styles.chatDetails}>
           <Text style={styles.chatName}>{item.username}</Text>
           <Text style={[

@@ -170,3 +170,20 @@ export const blockUser = async(data)=>{
         };
     }
 };
+
+export const reportUser = async(data)=>{
+    try{
+        const authToken = await getToken();
+        await axios.post(ENDPOINTS.reportUser, data, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+            },
+        });
+        return [201, []];
+    }
+    catch(error){
+        if (error.response?.data){
+            return [error.response?.status, error.response?.data?.detail];
+        };
+    }
+};
