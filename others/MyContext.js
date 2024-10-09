@@ -35,7 +35,7 @@ export const MainProvider = ({ children }) => {
 
   // Global socket start
   useEffect(()=>{
-    console.log('Token:', token, 'User:', user, 'Loging:', isLogged);
+    console.log('Token:', token, 'User:', user, 'Loging:', isLogged, 'gChatWS.current>>>', gChatWS.current);
     if (isLogged === 'logout' || !isLogged || !user || !token || gChatWS.current){
       return
     }
@@ -44,21 +44,26 @@ export const MainProvider = ({ children }) => {
     gChatWS.current = new WebSocket(`${G_SOCKET_URL}/${token}/`);
 
     gChatWS.current.onopen = () => {
-        ToastAndroid.show('connected', ToastAndroid.SHORT);
+      console.log('G WS connected');
+      ToastAndroid.show('connected', ToastAndroid.SHORT);
     };
 
     gChatWS.current.onmessage = (event) => {
-        const messageData = JSON.parse(event.data);
-        setWSData(messageData);
-        console.log("Msg received from global server(context):", messageData);
+      const messageData = JSON.parse(event.data);
+      setWSData(messageData);
+      console.log("Msg received from global server(context):", messageData);
     };
 
     gChatWS.current.onclose = () => {
-        ToastAndroid.show('dis-connected', ToastAndroid.SHORT);
+      console.log('G WS dis-connected');
+      ToastAndroid.show('dis-connected', ToastAndroid.SHORT);
+      gChatWS.current = null;
     };
 
     return () => {
+      if (gChatWS.current){
         gChatWS.current.close();
+      }
     };
   }, [user, token, isLogged]);
   // Global socket end

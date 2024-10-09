@@ -97,7 +97,8 @@ export default function Home({ navigation }) {
   }, [wsData]);
 
   useEffect(()=>{
-    const membersData = chats.filter(chat => activeUsers.includes(chat.username));
+    console.log('chats>>>', chats);
+    const membersData = chats.filter(chat => activeUsers.includes(chat.username) && !chat.is_blocked);
     setActiveMembers(membersData);
   }, [activeUsers]);
 
