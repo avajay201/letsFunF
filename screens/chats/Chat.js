@@ -678,7 +678,8 @@ const Chat = ({ navigation }) => {
 
   // Audio call start
   const handleAudioCall = () => {
-    ToastAndroid.show("Audio calling...", ToastAndroid.SHORT);
+    ToastAndroid.show(`Audio calling to ${userName}`, ToastAndroid.SHORT);
+    navigation.navigate('AudioCall', { userName: userName });
   };
   // Audio call end
 

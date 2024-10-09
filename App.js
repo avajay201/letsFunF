@@ -9,6 +9,7 @@ import Home from './screens/Home';
 import Profile from './screens/Profile';
 import Calls from './screens/Calls';
 import Chat from './screens/chats/Chat';
+import AudioCall from './screens/call/AudioCall';
 import { MainProvider } from './others/MyContext';
 
 import * as Device from 'expo-device';
@@ -182,6 +183,13 @@ function App() {
           <Stack.Screen
             name='Chat'
             component={Chat}
+            options={{
+              headerTitle: '',
+              header: (props) => null,
+          }} />
+          <Stack.Screen
+            name='AudioCall'
+            component={AudioCall}
             options={{
               headerTitle: '',
               header: (props) => null,
