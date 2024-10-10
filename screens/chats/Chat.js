@@ -222,37 +222,6 @@ const Chat = ({ navigation }) => {
       const messageData = data["message"];
       const status = messageData["status"];
       if (status === "msg") {
-        // if (
-        //   (messageData["message"]["image"] ||
-        //     messageData["message"]["video"]) &&
-        //   messageData["message"]["sender"] === user
-        // ) {
-        //   setMessages((prev) => {
-        //     if (prev.hasOwnProperty("Today")) {
-        //       const messageExists = prev.Today.find(
-        //         (msg) => msg.id === message.id
-        //       );
-        //       if (messageExists) {
-        //         return {
-        //           ...prev,
-        //           Today: prev.Today.map((msg) =>
-        //             msg.id === message.id ? message : msg
-        //           ),
-        //         };
-        //       } else {
-        //         return {
-        //           ...prev,
-        //           Today: [...prev.Today, message],
-        //         };
-        //       }
-        //     } else {
-        //       return {
-        //         ...prev,
-        //         Today: [message],
-        //       };
-        //     }
-        //   });
-        // }
         const message = messageData["message"];
         setMessages((prev) => {
           if (prev.hasOwnProperty("Today")) {
@@ -279,19 +248,6 @@ const Chat = ({ navigation }) => {
             };
           }
         });
-        // setMessages((prev) => {
-        //   if (prev.hasOwnProperty("Today")) {
-        //     return {
-        //       ...prev,
-        //       Today: [...prev.Today, message],
-        //     };
-        //   } else {
-        //     return {
-        //       ...prev,
-        //       Today: [message],
-        //     };
-        //   }
-        // });
       } else if (status === "status") {
         setUserStatus(messageData["result"] === "online" ? true : false);
         const updatedMessages = messageData["messages"];
@@ -678,7 +634,6 @@ const Chat = ({ navigation }) => {
 
   // Audio call start
   const handleAudioCall = () => {
-    ToastAndroid.show(`Audio calling to ${userName}`, ToastAndroid.SHORT);
     navigation.navigate('AudioCall', { userName: userName });
   };
   // Audio call end

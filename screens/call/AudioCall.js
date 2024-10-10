@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Button,
@@ -13,11 +13,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRoute } from "@react-navigation/native";
 import { useFocusEffect } from "@react-navigation/native";
 
-const ws = new WebSocket(`${AC_SOCKET_URL}/`);
 
 const configuration = {
   iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }, // Alternative Google STUN server
   ],
 };
 
@@ -25,14 +24,16 @@ const AudioCall = ({ navigation }) => {
   const route = useRoute();
   const { userName } = route.params;
   const [localStream, setLocalStream] = useState(null);
-  const [peerConnection, setPeerConnection] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
   const [callStatus, setCallStatus] = useState('Idle');
   const [roomName, setRoomName] = useState(null);
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  let callName;
+  const [micPermission, setMicPermission] = useState(false);
+  const callWS = useRef();
+  const peerRef = useRef();
 
-
+  // Helper function to fetch user and token from AsyncStorage
   const fetchAuth = async () => {
     const auth_user = await AsyncStorage.getItem("auth_user");
     const auth_token = await AsyncStorage.getItem("auth_token");
@@ -47,12 +48,11 @@ const AudioCall = ({ navigation }) => {
     setUser(auth_user);
     setToken(auth_token);
     if (auth_user && userName) {
-      callName = `${auth_user}__${userName}`;
+      const callName = `${auth_user}__${userName}`;
       setRoomName(callName);
-      fetchMessages();
-      return;
+    } else {
+      ToastAndroid.show("Something went wrong!", ToastAndroid.SHORT);
     }
-    ToastAndroid.show("Something went wrong!", ToastAndroid.SHORT);
   };
 
   useFocusEffect(
@@ -61,122 +61,178 @@ const AudioCall = ({ navigation }) => {
     }, [])
   );
 
+  const sendSignal = (action, message) => {
+    const jsonStr = JSON.stringify({
+      peer: user,
+      action: action,
+      message: message,
+    });
+    callWS.current?.send(jsonStr);
+  };
+
+  // WebSocket message handler
+  const wsMessageHandler = (event) => {
+    const parsedData = JSON.parse(event.data);
+    const peerUser = parsedData.message.peer;
+    const action = parsedData.message.action;
+
+    if (user === peerUser) return;
+    console.log('parsedData>>>', parsedData);
+    let receiveChannelName = parsedData.message.receive_channel_name;
+    if (action === 'new-peer') {
+      createOffer(receiveChannelName);
+    } else if (action === 'new-offer') {
+      receiveChannelName = parsedData.message.message.receive_channel_name;
+      const offer = parsedData.message.message.sdp;
+      createAnswer(offer, receiveChannelName);
+    } else if (action === 'new-answer') {
+      const answer = parsedData.message.message.sdp;
+      peerRef.current.setRemoteDescription(answer);
+    }
+  };
+
   useEffect(() => {
-    if (!roomName || !token || !user){
+    if (!micPermission) {
+      requestMicrophonePermission();
+    }
+
+    if (!roomName || !token || !user || !micPermission || callWS.current) {
       return;
     }
 
-    const setupWebSocket = () => {
-      ws.onopen = () => {
-        console.log('WebSocket connected');
-      };
-
-      ws.onmessage = async (message) => {
-        const data = JSON.parse(message.data);
-        if (data.type === 'offer') {
-          await handleOffer(data);
-        } else if (data.type === 'answer') {
-          await handleAnswer(data);
-        } else if (data.type === 'ice-candidate') {
-          await handleIceCandidate(data);
-        }
-      };
-
-      ws.onclose = () => {
-        console.log('WebSocket disconnected');
-      };
+    const ws = new WebSocket(`${AC_SOCKET_URL}/${roomName}/${token}/`);
+    ws.onopen = () => {
+      callWS.current = ws;
+      console.log('WebSocket connected');
     };
 
-    setupWebSocket();
-    requestMicrophonePermission();
+    ws.addEventListener('message', wsMessageHandler);
+
+    ws.onclose = () => {
+      console.log('WebSocket disconnected');
+      callWS.current = null;
+    };
+
     return () => {
       ws.close();
     };
-  }, [user, token, roomName]);
+  }, [user, token, roomName, micPermission]);
 
   const requestMicrophonePermission = async () => {
     try {
       const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-        {
-          title: 'Microphone Permission',
-          message: 'This app needs access to your microphone.',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
+        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
       );
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+        setMicPermission(true);
         console.log('Microphone permission granted');
       } else {
-        console.log('Microphone permission denied');
+        ToastAndroid.show('Microphone permission denied!', ToastAndroid.SHORT);
+        navigation.navigate('Home');
       }
     } catch (err) {
-      console.warn(err);
+      ToastAndroid.show('Microphone permission issue!', ToastAndroid.SHORT);
+      navigation.navigate('Home');
     }
   };
 
   const startCall = async () => {
-    setCallStatus('Calling...');
-    const newPeerConnection = new RTCPeerConnection(configuration);
-    setPeerConnection(newPeerConnection);
-    
+    // Get local media stream
     const stream = await mediaDevices.getUserMedia({
       audio: true,
-      video: false, // For audio call only
+      video: false,
     });
     setLocalStream(stream);
-    
-    stream.getTracks().forEach(track => newPeerConnection.addTrack(track, stream));
+    setCallStatus('Calling...');
+    sendSignal('new-peer', {});
+  };
 
-    newPeerConnection.onicecandidate = (event) => {
+  const addLocalTracks = (peer) => {
+    localStream?.getTracks().forEach((track) => {
+      peer.addTrack(track, localStream);
+    });
+  };
+
+  const setOnTrack = (peer) => {
+    peer.ontrack = (event) => {
+      stream.addTrack(event.track);
+      setRemoteStream(stream);
+    };
+  };
+
+  const createOffer = async (receiveChannelName) => {
+    const peer = new RTCPeerConnection(configuration);
+    peer.onicegatheringstatechange = () => {
+      console.log('ICE gathering state:', peer.iceGatheringState);
+    };
+
+    peer.onconnectionstatechange = () => {
+      console.log('Connection state:', peer.connectionState);
+    };
+
+    peer.addEventListener('icecandidateerror', (event) => {
+      console.error('ICE Candidate Error:', event);
+    });
+
+    addLocalTracks(peer);
+    setOnTrack(peer);
+  
+    peer.onicecandidate = (event) => {
       if (event.candidate) {
-        ws.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate }));
+        console.log('New ICE candidate:', event.candidate);
+      } else {
+        console.log('All ICE candidates have been gathered.');
+        // Send the offer after all ICE candidates are gathered
+        sendSignal('new-offer', {
+          sdp: peer.localDescription,
+          receive_channel_name: receiveChannelName,
+        });
+      }
+    };
+  
+    try {
+      const offer = await peer.createOffer(
+        {
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: false, // Modify according to your needs
+        }
+      );
+      await peer.setLocalDescription(offer);
+      peer.restartIce();
+      console.log('Offer created and set:', peer.localDescription);
+    } catch (error) {
+      console.error('Error creating or setting offer:', error);
+    }
+  
+    peerRef.current = peer;
+  };
+
+  const createAnswer = async (offer, receiveChannelName) => {
+    const peer = new RTCPeerConnection(configuration);
+    addLocalTracks(peer);
+    setOnTrack(peer);
+
+    peer.onicecandidate = (event) => {
+      if (!event.candidate) {
+        sendSignal('new-answer', {
+          sdp: peer.localDescription,
+          receive_channel_name: receiveChannelName,
+        });
       }
     };
 
-    const offer = await newPeerConnection.createOffer();
-    await newPeerConnection.setLocalDescription(offer);
-    ws.send(JSON.stringify({ type: 'offer', sdp: offer }));
-  };
-
-  const handleOffer = async (data) => {
-    const newPeerConnection = new RTCPeerConnection(configuration);
-    setPeerConnection(newPeerConnection);
-
-    const stream = await mediaDevices.getUserMedia({ audio: true, video: false });
-    setLocalStream(stream);
-    
-    stream.getTracks().forEach(track => newPeerConnection.addTrack(track, stream));
-
-    newPeerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        ws.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate }));
-      }
-    };
-
-    await newPeerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-    const answer = await newPeerConnection.createAnswer();
-    await newPeerConnection.setLocalDescription(answer);
-    ws.send(JSON.stringify({ type: 'answer', sdp: answer }));
-  };
-
-  const handleAnswer = async (data) => {
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-    setCallStatus('In Call');
-  };
-
-  const handleIceCandidate = async (data) => {
-    const candidate = new RTCIceCandidate(data.candidate);
-    await peerConnection.addIceCandidate(candidate);
+    await peer.setRemoteDescription(offer);
+    const answer = await peer.createAnswer();
+    await peer.setLocalDescription(answer);
+    peerRef.current = peer;
   };
 
   const endCall = () => {
     setCallStatus('Idle');
-    localStream && localStream.getTracks().forEach(track => track.stop());
-    peerConnection && peerConnection.close();
+    localStream?.getTracks().forEach((track) => track.stop());
+    peerRef.current?.close();
     setLocalStream(null);
-    setPeerConnection(null);
+    setRemoteStream(null);
   };
 
   return (
